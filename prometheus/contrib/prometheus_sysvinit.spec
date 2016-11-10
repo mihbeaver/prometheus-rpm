@@ -1,14 +1,18 @@
 %define debug_package %{nil}
 
-Name:		prometheus-sysvinit
-Version:	1.2.1
+Name:		prometheus
+Version:	1.2.3
 Release:	1%{?dist}
-Summary:	Prometheus is a systems and service monitoring system. It collects metrics from configured targets at given intervals, evaluates rule expressions, displays the results, and can trigger alerts if some condition is observed to be true.
+Summary:	Prometheus is a systems and service monitoring system.
 Group:		System Environment/Daemons
-License:	See the LICENSE file at github.
+License:	ASL 2.0
 URL:		https://github.com/prometheus/prometheus
 Source0:	https://github.com/prometheus/prometheus/releases/download/%{version}/prometheus-%{version}.linux-amd64.tar.gz
-BuildRoot:	%{_tmppath}/%{name}-%{version}-root
+Source1:	prometheus.init
+Source2:	prometheus.rules
+Source3:	prometheus.sysconfig
+Source4:	prometheus.yaml
+
 Requires(pre):  /usr/sbin/useradd
 Requires:       daemonize
 AutoReqProv:	No
@@ -24,66 +28,36 @@ some condition is observed to be true.
 %setup -q -n prometheus-%{version}.linux-amd64
 
 %build
-echo
+echo "No building needed"
 
 %install
-mkdir -vp $RPM_BUILD_ROOT/var/log/prometheus/
-mkdir -vp $RPM_BUILD_ROOT/var/run/prometheus
-mkdir -vp $RPM_BUILD_ROOT/var/lib/prometheus
-mkdir -vp $RPM_BUILD_ROOT/usr/bin
-mkdir -vp $RPM_BUILD_ROOT/etc/init.d
-mkdir -vp $RPM_BUILD_ROOT/etc/prometheus
-mkdir -vp $RPM_BUILD_ROOT/etc/sysconfig
-mkdir -vp $RPM_BUILD_ROOT/usr/share/prometheus
-mkdir -vp $RPM_BUILD_ROOT/usr/share/prometheus/consoles
-mkdir -vp $RPM_BUILD_ROOT/usr/share/prometheus/console_libraries
+install -m 755 -D %{SOURCE1} %{buildroot}/etc/init.d/prometheus
+install -m 644 -D %{SOURCE2} %{buildroot}/etc/prometheus/prometheus.rules
+install -m 644 -D %{SOURCE3} %{buildroot}/etc/sysconfig/prometheus
+install -m 644 -D %{SOURCE4} %{buildroot}/etc/prometheus/prometheus.yaml
+install -m 755 -D prometheus %{buildroot}/usr/bin/prometheus
+install -m 755 -D promtool %{buildroot}/usr/bin/promtool
 
-install -m 755 contrib/prometheus.init $RPM_BUILD_ROOT/etc/init.d/prometheus
-install -m 644 contrib/prometheus.rules $RPM_BUILD_ROOT/etc/prometheus/prometheus.rules
-install -m 644 contrib/prometheus.sysconfig $RPM_BUILD_ROOT/etc/sysconfig/prometheus
-install -m 644 contrib/prometheus.yaml $RPM_BUILD_ROOT/etc/prometheus/prometheus.yaml
-install -m 755 prometheus $RPM_BUILD_ROOT/usr/bin/prometheus
-install -m 755 promtool $RPM_BUILD_ROOT/usr/bin/promtool
-
-
-install -m 755 console_libraries/menu.lib $RPM_BUILD_ROOT/usr/share/prometheus/console_libraries
-install -m 755 console_libraries/prom.lib $RPM_BUILD_ROOT/usr/share/prometheus/console_libraries
-install -m 755 consoles/aws_elasticache.html $RPM_BUILD_ROOT/usr/share/prometheus/consoles
-install -m 755 consoles/aws_elb.html $RPM_BUILD_ROOT/usr/share/prometheus/consoles
-install -m 755 consoles/aws_redshift-cluster.html $RPM_BUILD_ROOT/usr/share/prometheus/consoles
-install -m 755 consoles/aws_redshift.html $RPM_BUILD_ROOT/usr/share/prometheus/consoles
-install -m 755 consoles/blackbox.html $RPM_BUILD_ROOT/usr/share/prometheus/consoles
-install -m 755 consoles/cassandra.html $RPM_BUILD_ROOT/usr/share/prometheus/consoles
-install -m 755 consoles/cloudwatch.html $RPM_BUILD_ROOT/usr/share/prometheus/consoles
-install -m 755 consoles/haproxy-backend.html $RPM_BUILD_ROOT/usr/share/prometheus/consoles
-install -m 755 consoles/haproxy-backends.html $RPM_BUILD_ROOT/usr/share/prometheus/consoles
-install -m 755 consoles/haproxy-frontend.html $RPM_BUILD_ROOT/usr/share/prometheus/consoles
-install -m 755 consoles/haproxy-frontends.html $RPM_BUILD_ROOT/usr/share/prometheus/consoles
-install -m 755 consoles/haproxy.html $RPM_BUILD_ROOT/usr/share/prometheus/consoles
-install -m 755 consoles/index.html.example $RPM_BUILD_ROOT/usr/share/prometheus/consoles
-install -m 755 consoles/node-cpu.html $RPM_BUILD_ROOT/usr/share/prometheus/consoles
-install -m 755 consoles/node-disk.html $RPM_BUILD_ROOT/usr/share/prometheus/consoles
-install -m 755 consoles/node-overview.html $RPM_BUILD_ROOT/usr/share/prometheus/consoles
-install -m 755 consoles/node.html $RPM_BUILD_ROOT/usr/share/prometheus/consoles
-install -m 755 consoles/prometheus-overview.html $RPM_BUILD_ROOT/usr/share/prometheus/consoles
-install -m 755 consoles/prometheus.html $RPM_BUILD_ROOT/usr/share/prometheus/consoles
-install -m 755 consoles/snmp-overview.html $RPM_BUILD_ROOT/usr/share/prometheus/consoles
-install -m 755 consoles/snmp.html $RPM_BUILD_ROOT/usr/share/prometheus/consoles
+mkdir -p %{buildroot}/usr/share/prometheus
+mkdir -p %{buildroot}/var/run/prometheus
+mkdir -p %{buildroot}/var/log/prometheus
+cp -r console_libraries $RPM_BUILD_ROOT/usr/share/prometheus/consoles_libraries
+cp -r consoles $RPM_BUILD_ROOT/usr/share/prometheus/consoles
 
 %clean
 
 %pre
 getent group prometheus >/dev/null || groupadd -r prometheus
 getent passwd prometheus >/dev/null || \
-  useradd -r -g prometheus -s /sbin/nologin \
+useradd -r -g prometheus -s /sbin/nologin \
     -d $RPM_BUILD_ROOT/var/lib/prometheus/ -c "prometheus Daemons" prometheus
 exit 0
 
 %post
-chgrp prometheus /var/run/prometheus
-chmod 774 /var/run/prometheus
-chown prometheus:prometheus /var/log/prometheus
-chmod 744 /var/log/prometheus
+#chgrp prometheus /var/run/prometheus
+#chmod 774 /var/run/prometheus
+#chown prometheus:prometheus /var/log/prometheus
+#chmod 744 /var/log/prometheus
 
 %files
 %defattr(-,root,root,-)
@@ -93,29 +67,6 @@ chmod 744 /var/log/prometheus
 %config(noreplace) /etc/prometheus/prometheus.rules
 /etc/init.d/prometheus
 %config(noreplace) /etc/sysconfig/prometheus
-/usr/share/prometheus/consoles/aws_elasticache.html
-/usr/share/prometheus/consoles/aws_elb.html
-/usr/share/prometheus/consoles/aws_redshift-cluster.html
-/usr/share/prometheus/consoles/aws_redshift.html
-/usr/share/prometheus/consoles/blackbox.html
-/usr/share/prometheus/consoles/cassandra.html
-/usr/share/prometheus/consoles/cloudwatch.html
-/usr/share/prometheus/consoles/haproxy-backend.html
-/usr/share/prometheus/consoles/haproxy-backends.html
-/usr/share/prometheus/consoles/haproxy-frontend.html
-/usr/share/prometheus/consoles/haproxy-frontends.html
-/usr/share/prometheus/consoles/haproxy.html
-/usr/share/prometheus/consoles/index.html.example
-/usr/share/prometheus/consoles/node-cpu.html
-/usr/share/prometheus/consoles/node-disk.html
-/usr/share/prometheus/consoles/node-overview.html
-/usr/share/prometheus/consoles/node.html
-/usr/share/prometheus/consoles/prometheus-overview.html
-/usr/share/prometheus/consoles/prometheus.html
-/usr/share/prometheus/consoles/snmp-overview.html
-/usr/share/prometheus/consoles/snmp.html
-/usr/share/prometheus/console_libraries/prom.lib
-/usr/share/prometheus/console_libraries/menu.lib
-%attr(755, prometheus, prometheus)/var/lib/prometheus
+/usr/share/prometheus
 /var/run/prometheus
 /var/log/prometheus
