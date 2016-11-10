@@ -26,16 +26,16 @@ GOMAXPROCS=$(grep -c ^processor /proc/cpuinfo)
 . ${DAEMON_SYSCONFIG}
 
 start() {
-  if check_status > /dev/null; then
-    echo "prometheus is already running"
-    exit 0
-  fi
+	if check_status > /dev/null; then
+    	echo "prometheus is already running"
+ 		exit 0
+	fi
 
-  echo -n $"Starting prometheus: "
-  daemonize -u ${DAEMON_USER} -p ${PID_FILE} -l ${LOCK_FILE} -a -e ${LOG_FILE} -o ${LOG_FILE} ${DAEMON} ${ARGS}
-  RETVAL=$?
-  echo ""
-  return $RETVAL
+	echo -n $"Starting prometheus: "
+	daemonize -u ${DAEMON_USER} -p ${PID_FILE} -l ${LOCK_FILE} -a -e ${LOG_FILE} -o ${LOG_FILE} ${DAEMON} ${ARGS}
+	RETVAL=$?
+	echo ""
+	return $RETVAL
 }
 
 stop() {
